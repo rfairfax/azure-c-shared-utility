@@ -13,9 +13,12 @@ ${theseTestsName}.c
 
 set(${theseTestsName}_c_files
 ../../adapters/tickcounter_freertos.c
+freertos/FreeRTOS.c
 )
 
 set(${theseTestsName}_h_files
 )
+
+include_directories(.)
 
 build_c_test_artifacts(${theseTestsName} ON "tests/azure_c_shared_utility_tests")

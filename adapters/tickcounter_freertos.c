@@ -9,16 +9,8 @@
 #include "azure_c_shared_utility/optimize_size.h"
 #include "azure_c_shared_utility/xlogging.h"
 
-
-#ifndef CONFIG_FREERTOS_HZ
-#define CONFIG_FREERTOS_HZ 100
-static uint32_t fakeTick = 0;
-static uint32_t xTaskGetTickCount()
-{
-	fakeTick += 100;
-	return fakeTick;
-}
-#endif
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 typedef struct TICK_COUNTER_INSTANCE_TAG
 {
@@ -27,20 +19,30 @@ typedef struct TICK_COUNTER_INSTANCE_TAG
 
 TICK_COUNTER_HANDLE tickcounter_create(void)
 {
+	/* Codes_SRS_TICKCOUNTER_FREERTOS_30_003: [ `tickcounter_create` shall allocate and initialize an internally-defined TICK_COUNTER_INSTANCE structure and return its pointer on success.] */
     TICK_COUNTER_INSTANCE* result = (TICK_COUNTER_INSTANCE*)malloc(sizeof(TICK_COUNTER_INSTANCE));
     if (result == NULL)
     {
+		/* Codes_SRS_TICKCOUNTER_FREERTOS_30_004: [ If allocation of the internally-defined TICK_COUNTER_INSTANCE structure fails,  `tickcounter_create` shall return 0.] */
         LogError("Failed creating tick counter");
     }
-	// xTaskGetTickCount has no failure path
-	result->original_tick_count = xTaskGetTickCount();
+	else
+	{
+		// The FreeRTOS call xTaskGetTickCount has no failure path
+		// Store the initial tick count in order to meet these two requirements: 
+		/* Codes_SRS_TICKCOUNTER_FREERTOS_30_0097: [ tickcounter_get_current_ms shall set *current_ms to the number of milliseconds elapsed since the tickcounter_create call for the specified tick_counter and return 0 to indicate success in situations where the FreeRTOS call xTaskGetTickCount has not experienced overflow between the calls to tickcounter_create and tickcounter_get_current_ms. (In FreeRTOS this call has no failure case.) ] */
+		/* Codes_SRS_TICKCOUNTER_FREERTOS_30_010: [ tickcounter_get_current_ms shall set *current_ms to the number of milliseconds elapsed since the tickcounter_create call for the specified tick_counter and return 0 to indicate success in situations where the FreeRTOS call xTaskGetTickCount has experienced overflow between the calls to tickcounter_create and tickcounter_get_current_ms. (In FreeRTOS this call has no failure case.) ] */
+		result->original_tick_count = xTaskGetTickCount();
+	}
     return result;
 }
 
 void tickcounter_destroy(TICK_COUNTER_HANDLE tick_counter)
 {
+	/* Codes_SRS_TICKCOUNTER_FREERTOS_30_006: [ If the tick_counter parameter is NULL, tickcounter_destroy shall do nothing. ] */
     if (tick_counter != NULL)
     {
+		/* Codes_SRS_TICKCOUNTER_FREERTOS_30_005: [ tickcounter_destroy shall delete the internally-defined TICK_COUNTER_INSTANCE structure specified by the tick_counter parameter. (This call has no failure case.) ] */
         free(tick_counter);
     }
 }
@@ -49,20 +51,24 @@ int tickcounter_get_current_ms(TICK_COUNTER_HANDLE tick_counter, tickcounter_ms_
 {
     int result;
 
-    if (tick_counter == NULL || current_ms == NULL)
+	if (tick_counter == NULL || current_ms == NULL)
     {
-        LogError("tickcounter failed: Invalid Arguments.\r\n");
+		/* Codes_SRS_TICKCOUNTER_FREERTOS_30_007: [ If the tick_counter parameter is NULL, tickcounter_get_current_ms shall return a non-zero value to indicate error. ] */
+		/* Codes_SRS_TICKCOUNTER_FREERTOS_30_008: [ If the current_ms parameter is NULL, tickcounter_get_current_ms shall return a non-zero value to indicate error. ] */
+		LogError("tickcounter failed: Invalid Arguments.\r\n");
         result = __FAILURE__;
     }
     else
     {
-        *current_ms = (tickcounter_ms_t)(
+		/* Codes_SRS_TICKCOUNTER_FREERTOS_30_009: [ tickcounter_get_current_ms shall set *current_ms to the number of milliseconds elapsed since the tickcounter_create call for the specified tick_counter and return 0 to indicate success in situations where the FreeRTOS call xTaskGetTickCount has not experienced overflow between the calls to tickcounter_create and tickcounter_get_current_ms. (In FreeRTOS this call has no failure case.) ] */
+		/* Codes_SRS_TICKCOUNTER_FREERTOS_30_010: [ tickcounter_get_current_ms shall set *current_ms to the number of milliseconds elapsed since the tickcounter_create call for the specified tick_counter and return 0 to indicate success in situations where the FreeRTOS call xTaskGetTickCount has experienced overflow between the calls to tickcounter_create and tickcounter_get_current_ms. (In FreeRTOS this call has no failure case.) ] */
+		*current_ms = (tickcounter_ms_t)(
 			// Subtraction of two uint32_t's followed by a cast to uint32_t
 			// ensures that the result remains valid until the real difference exceeds 32 bits.
 			((uint32_t)(xTaskGetTickCount() - tick_counter->original_tick_count))
 			// Now that overflow behavior is ensured it is safe to scale. CONFIG_FREERTOS_HZ is typically
 			// equal to 1000 or less, so overflow won't happen until the 49.7 day limit
-			// of this call's uint32_t return value.
+			// of this call's effective uint32_t return value.
 			* 1000.0 / CONFIG_FREERTOS_HZ
 			);
         result = 0;

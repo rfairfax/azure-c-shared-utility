@@ -62,4 +62,7 @@ The `tickcounter_get_current_ms` call returns the number of milleconds elapsed s
 int tickcounter_get_current_ms(TICK_COUNTER_HANDLE tick_counter, tickcounter_ms_t* current_ms);
 ```
 
-**SRS_TICKCOUNTER_FREERTOS_30_007: [** `tickcounter_get_current_ms` shall set `*current_ms` to the number of milliseconds elapsed since the `tickcounter_create` call for the specified `tick_counter` and return 0 to indicate success. (In FreeRTOS this call has no failure case.) **]**  
+**SRS_TICKCOUNTER_FREERTOS_30_007: [** If the `tick_counter` parameter is NULL, `tickcounter_get_current_ms` shall return a non-zero value to indicate error. **]**   
+ **SRS_TICKCOUNTER_FREERTOS_30_008: [** If the `current_ms` parameter is NULL, `tickcounter_get_current_ms` shall return a non-zero value to indicate error. **]**  
+ **SRS_TICKCOUNTER_FREERTOS_30_009:  [** `tickcounter_get_current_ms` shall set `*current_ms` to the number of milliseconds elapsed since the `tickcounter_create` call for the specified `tick_counter` and return 0 to indicate success in situations where the FreeRTOS call `xTaskGetTickCount` has not experienced overflow between the calls to `tickcounter_create` and `tickcounter_get_current_ms`. (In FreeRTOS this call has no failure case.) **]**  
+**SRS_TICKCOUNTER_FREERTOS_30_010: [** `tickcounter_get_current_ms` shall set `*current_ms` to the number of milliseconds elapsed since the `tickcounter_create` call for the specified `tick_counter` and return 0 to indicate success in situations where the FreeRTOS call `xTaskGetTickCount` has experienced overflow between the calls to `tickcounter_create` and `tickcounter_get_current_ms`. (In FreeRTOS this call has no failure case.) **]**  
