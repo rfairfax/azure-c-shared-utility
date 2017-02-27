@@ -50,9 +50,9 @@ add_subdirectory(xio_ut)
 add_subdirectory(optionhandler_ut)
 
 if(use_wsio)
+    add_subdirectory(wsio_ut)
     add_subdirectory(uws_client_ut)
     add_subdirectory(uws_frame_encoder_ut)
-    add_subdirectory(wsio_ut)
 endif()
 
 #Add adapters tests
